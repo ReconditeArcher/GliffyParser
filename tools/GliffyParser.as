@@ -1,5 +1,7 @@
 package tools
 {
+	import com.gskinner.StringUtils;
+
 	import net.jimblacker.sprintf;
 	import net.reconditeden.debug.assert;
 	import net.reconditeden.text.HtmlWorks;
@@ -22,9 +24,8 @@ package tools
 		private var _objectsById:Object = {};
 		private var _textObjects:Object = {};
 		private var _linksByStartUid:Object = {};
-		private var _linksByEndUid:Object = {};
 		private var _pointObjects:Object = {};
-		private var _waypointObjects:Object = {};
+		private var _wayPointObjects:Object = {};
 
 		private var _resultObj:Object = {};
 
@@ -32,22 +33,34 @@ package tools
 
 		public function GliffyParser()
 		{
-			_resultObj = createEmptyScenario();
-			_objectsById = {};
-
 			_pseudoJSONConverter = new PseudoJSONConverter();
 		}
 
 		public function convert(gliffyJson:String):String
 		{
+			parse(gliffyJson);
+
+			var resultScenario:String = getScenarioStrng();
+			return resultScenario;
+		}
+
+		public function parse(gliffyJson:String):Object
+		{
+			_resultObj = createEmptyScenario();
+			_objectsById = {};
+			_textObjects = {};
+			_linksByStartUid = {};
+			_pointObjects = {};
+			_wayPointObjects = {};
+
 			traverseTree(JSON.parse(gliffyJson));
 			pickMeaningfulObjects();
 			linkObjects();
 
 			_resultObj['texts'] = createTextsPart();
+			denseTexts(_resultObj);
 
-			var resultScenario:String = getScenarioStrng();
-			return resultScenario;
+			return _resultObj;
 		}
 
 		private function linkObjects():void
@@ -64,13 +77,13 @@ package tools
 					for each (var link:Object in links) {
 						if (!link || !isMeaningful(_objectsById[link['end']])) continue;
 
-						var waypoint:Object = _waypointObjects[link['end']];
-						if (waypoint) {
-							(scenarioPoint['points'] as Array).push(waypoint);
+						var wayPoint:Object = _wayPointObjects[link['end']];
+						if (wayPoint) {
+							(scenarioPoint['points'] as Array).push(wayPoint);
 
 							var linksFromThisWaypoint:Array = _linksByStartUid[link['end']];
 							if (linksFromThisWaypoint && linksFromThisWaypoint[0]) {
-								waypoint['to'] = linksFromThisWaypoint[0]['end'];
+								wayPoint['to'] = linksFromThisWaypoint[0]['end'];
 							}
 						}
 					}
@@ -126,7 +139,7 @@ package tools
 
 			assert(scenarioWaypoint['place'], sprintf('Point with text %s has no place', scenarioWaypoint['text']));
 
-			_waypointObjects[dialogWaypointSource['id']] = scenarioWaypoint;
+			_wayPointObjects[dialogWaypointSource['id']] = scenarioWaypoint;
 		}
 
 		private function createDialogPoint(dialogPointSource:Object, textObj:Object):void
@@ -235,7 +248,6 @@ package tools
 					var linkObj:Object = {start: startNodeId, end: endNodeId};
 
 					RawObjectsWorks.addToMap(_linksByStartUid, linkObj, 'start');
-					RawObjectsWorks.addToMap(_linksByEndUid, linkObj, 'end');
 				}
 			}
 		}
@@ -328,6 +340,43 @@ package tools
 			}
 
 			return invalidProperty;
+		}
+
+		private function denseTexts(scenarioObject:Object):void
+		{
+			var countsByText:Object = {};
+			var texts:Object = scenarioObject['texts'];
+			var textIdsToRemove:Array = [];
+
+			for (var textId:String in texts) {
+				// Preparing text
+				var text:String = StringUtils.trim(texts[textId]);
+
+				// Lazy creating counter object. We need count to know if text was already presented in array.
+				// And we need textId to change all references from redundant text to first one.
+				var textCountObject:Object = countsByText[text];
+				if (textCountObject == null) {
+					textCountObject = {cnt: 0, textId: textId};
+					countsByText[text] = textCountObject;
+				}
+
+				countsByText[text]['cnt']++;
+
+				if (countsByText[text]['cnt'] > 1) {
+					RawObjectsWorks.forEach(
+							function (obj:Object, propName:String, propValue:Object):void
+							{
+								if (propName == 'text' && propValue == textId) {
+									obj[propName] = countsByText[text]['textId'];
+								}
+							}, scenarioObject['dialog'], true);
+					textIdsToRemove.push(textId);
+				}
+			}
+
+			for each(var removeTextId:int in textIdsToRemove) {
+				delete texts[removeTextId];
+			}
 		}
 
 	}
