@@ -7,6 +7,7 @@ package
 	import net.reconditeden.UI.Button;
 	import net.reconditeden.utils.FileWorks;
 
+	import tools.FilesMerger;
 	import tools.GliffyParser;
 
 	/**
@@ -18,6 +19,7 @@ package
 		private var _conversionResult:String;
 		private var _convertBtn:Button;
 		private var _saveButton:Button;
+		private var _mergeButton:Button;
 		//
 		private var _initiated:Boolean;
 		// ----------------------------------------------------------------------------
@@ -46,10 +48,19 @@ package
 			_saveButton = new Button('Сохранить', 0xFF4621, 0x000000, onSaveButton);
 			_saveButton.visible = false;
 			addChild(_saveButton);
+
+			_mergeButton = new Button('Склеить', 0xFFFB00, 0x000000, onMergeButton);
+			addChild(_mergeButton);
 			
 			_initiated = true;
 			
 			onResize();
+		}
+
+		private function onMergeButton():void
+		{
+			var merger:FilesMerger = new FilesMerger();
+			merger.mergeFiles();
 		}
 		
 		private function onConvertButton():void
@@ -82,11 +93,14 @@ package
 		private function onResize(event:Event = null):void
 		{
 			if (_initiated) {
-				_convertBtn.x = SmartStage.stage.stageWidth / 2;
+				_convertBtn.x = SmartStage.stage.stageWidth / 4;
 				_convertBtn.y = SmartStage.stage.stageHeight / 2 - _convertBtn.height / 2;
 				
-				_saveButton.x = SmartStage.stage.stageWidth / 2;
+				_saveButton.x = SmartStage.stage.stageWidth / 4;
 				_saveButton.y = SmartStage.stage.stageHeight / 2 + _saveButton.height / 2;
+
+				_mergeButton.x = SmartStage.stage.stageWidth / 4 * 3;
+				_mergeButton.y = SmartStage.stage.stageHeight / 2 - _mergeButton.height / 2;
 			}
 		}
 		
