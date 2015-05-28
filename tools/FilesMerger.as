@@ -84,15 +84,11 @@ package tools
 
 				for (var i:int = 0; i < count; i++) {
 					var newId:String = String(textsCounter);
-					var countBefore:int = textIds.length;
-					var throughRemove:Boolean;
 
 					if (textsObj[newId] != null && textIds.indexOf(newId) > -1) {
-						throughRemove = true;
 						resultTextsCollection[newId] = textsObj[newId];
 						ArrayUtil.removeValueFromArray(textIds, newId)
 					} else {
-						throughRemove = false;
 						var textId:String = textIds.pop();
 						RawObjectsWorks.forEach(
 								function (obj:Object, propName:String, propValue:Object):void
@@ -103,10 +99,6 @@ package tools
 								},
 								scenarioObject['dialog'], true);
 						resultTextsCollection[newId] = textsObj[textId];
-					}
-
-					if (countBefore == textIds.length) {
-						assert(false, 'Pumm');
 					}
 
 					textsCounter++;
