@@ -24,11 +24,11 @@ package tools
 		private var _resultObj:Object = {};
 
 		private var _pseudoJSONConverter:PseudoJSONConverter;
-		private var _settiings:ConverterSettings;
+		private var _settings:ConverterSettings;
 
 		public function GliffyParser(settings:ConverterSettings)
 		{
-			_settiings = settings;
+			_settings = settings;
 			_pseudoJSONConverter = new PseudoJSONConverter();
 		}
 
@@ -93,13 +93,13 @@ package tools
 				var i:int = 5;
 				var parent:Object = textObj;
 				do {
-					parent = parent[_settiings.backLinkName];
+					parent = parent[_settings.backLinkName];
 					i--;
 				} while (!isMeaningful(parent) && i > 0);
 
-				if (objectHasPropWithAnyValue(parent, 'uid', _settiings.scenarioPointUids)) {
+				if (objectHasPropWithAnyValue(parent, 'uid', _settings.scenarioPointUids)) {
 					createDialogPoint(parent, textObj);
-				} else if (objectHasPropWithAnyValue(parent, 'uid', _settiings.scenarioWayPointsUids)) {
+				} else if (objectHasPropWithAnyValue(parent, 'uid', _settings.scenarioWayPointsUids)) {
 					createDialogWaypoint(parent, textObj);
 				}
 			}
@@ -109,8 +109,8 @@ package tools
 		{
 			var data:Object = {};
 			var text:String = textObj['Text']['html'];
-			var dataStartIndex:int = text.indexOf(_settiings.clientDataOpeningSymbol);
-			var dataEndIndex:int = text.lastIndexOf(_settiings.clientDataClosingSymbol);
+			var dataStartIndex:int = text.indexOf(_settings.clientDataOpeningSymbol);
+			var dataEndIndex:int = text.lastIndexOf(_settings.clientDataClosingSymbol);
 			if (dataStartIndex > -1 || dataEndIndex > -1) {
 				assert(dataStartIndex > 0, 'Warning! Closing curly bracket without opening one!');
 				assert(dataEndIndex > 0, 'Warning! Opening curly bracket without closing one!');
@@ -123,7 +123,7 @@ package tools
 			}
 
 			var scenarioWaypoint:Object = {};
-			scenarioWaypoint['text'] = textObj[_settiings.backLinkName]['id'];
+			scenarioWaypoint['text'] = textObj[_settings.backLinkName]['id'];
 
 			for each (var clientDataObj:Object in data) {
 				var invalidProp:String = findInvalidProperties(clientDataObj);
@@ -142,8 +142,8 @@ package tools
 		{
 			var data:Object = {};
 			var text:String = textObj['Text']['html'];
-			var dataStartIndex:int = text.indexOf(_settiings.clientDataOpeningSymbol);
-			var dataEndIndex:int = text.lastIndexOf(_settiings.clientDataClosingSymbol);
+			var dataStartIndex:int = text.indexOf(_settings.clientDataOpeningSymbol);
+			var dataEndIndex:int = text.lastIndexOf(_settings.clientDataClosingSymbol);
 			if (dataStartIndex > -1 || dataEndIndex > -1) {
 				assert(dataStartIndex > 0, 'Warning! Closing curly bracket without opening one!');
 				assert(dataEndIndex > 0, 'Warning! Opening curly bracket without closing one!');
@@ -157,7 +157,7 @@ package tools
 
 			var scenarioPoint:Object = {};
 			scenarioPoint['guid'] = dialogPointSource['id'];
-			scenarioPoint['text'] = textObj[_settiings.backLinkName]['id'];
+			scenarioPoint['text'] = textObj[_settings.backLinkName]['id'];
 			scenarioPoint['points'] = [];
 
 			for each (var clientDataObj:Object in data) {
@@ -180,8 +180,8 @@ package tools
 		{
 			if (!testObject) return false;
 
-			var meanSmth:Boolean = objectHasPropWithAnyValue(testObject, 'uid', _settiings.scenarioPointUids);
-			meanSmth ||= objectHasPropWithAnyValue(testObject, 'uid', _settiings.scenarioWayPointsUids);
+			var meanSmth:Boolean = objectHasPropWithAnyValue(testObject, 'uid', _settings.scenarioPointUids);
+			meanSmth ||= objectHasPropWithAnyValue(testObject, 'uid', _settings.scenarioWayPointsUids);
 
 			return meanSmth;
 		}
@@ -192,8 +192,8 @@ package tools
 			for (var id:String in _textObjects) {
 
 				var text:String = stripHtml(_textObjects[id]['Text']['html']);
-				var dataStartIndex:int = text.indexOf(_settiings.clientDataOpeningSymbol);
-				var dataEndIndex:int = text.lastIndexOf(_settiings.clientDataClosingSymbol);
+				var dataStartIndex:int = text.indexOf(_settings.clientDataOpeningSymbol);
+				var dataEndIndex:int = text.lastIndexOf(_settings.clientDataClosingSymbol);
 				if (dataStartIndex > -1 || dataEndIndex > -1) {
 					assert(dataStartIndex > 0, 'Warning! Closing curly bracket without opening one!');
 					assert(dataEndIndex > 0, 'Warning! Opening curly bracket without closing one!');
@@ -211,7 +211,7 @@ package tools
 		{
 			for (var propName:String in sourceObject) {
 				// To avoid infinite loop
-				if (propName == _settiings.backLinkName) continue;
+				if (propName == _settings.backLinkName) continue;
 
 				var propValue:Object = sourceObject[propName];
 
@@ -263,14 +263,14 @@ package tools
 		private function includeBackLink(propValue:Object, hostObject:Object):void
 		{
 			if (typeof propValue == 'object') {
-				propValue[_settiings.backLinkName] = hostObject;
+				propValue[_settings.backLinkName] = hostObject;
 			}
 		}
 
 		private function pickTextObjects(obj:Object):void
 		{
 			if (objectHasProp(obj, 'type', 'Text')) {
-				var parentId:String = obj[_settiings.backLinkName]['id'];
+				var parentId:String = obj[_settings.backLinkName]['id'];
 				checkIdCollision(parentId, _textObjects);
 
 				_textObjects[parentId] = obj;
@@ -328,7 +328,7 @@ package tools
 		{
 			var invalidProperty:String = null;
 			for (var propName:String in objToValidate) {
-				var propIsValid:Boolean = _settiings.validClientDataProperties.indexOf(propName) > -1;
+				var propIsValid:Boolean = _settings.validClientDataProperties.indexOf(propName) > -1;
 				if (!propIsValid) {
 					invalidProperty = propName;
 					break;
