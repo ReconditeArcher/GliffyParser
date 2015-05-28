@@ -2,6 +2,8 @@ package tools
 {
 	import com.gskinner.StringUtils;
 
+	import data.ConverterSettings;
+
 	import net.jimblacker.sprintf;
 	import net.reconditeden.debug.assert;
 	import net.reconditeden.text.HtmlWorks;
@@ -13,14 +15,6 @@ package tools
 	 */
 	public class GliffyParser
 	{
-		private const VALID_CLIENT_DATA_PROPS:Array = ['place', 'bgUrl', 'skipInAnswers', 'npcName', 'menuItem', 'unique'];
-		private const BACK_LINK_NAME:String = '__parent__';
-		private const SCENARIO_POINT_UIDS:Array = ['com.gliffy.shape.basic.basic_v1.default.square', 'com.gliffy.shape.basic.basic_v1.default.rectangle'];
-		private const SCENARIO_WAYPOINT_UIDS:Array = ['com.gliffy.shape.basic.basic_v1.default.circle'];
-
-		private const CLIENT_DATA_OPENING_SYMBOL:String = '{';
-		private const CLIENT_DATA_CLOSING_SYMBOL:String = '}';
-
 		private var _objectsById:Object = {};
 		private var _textObjects:Object = {};
 		private var _linksByStartUid:Object = {};
@@ -30,9 +24,11 @@ package tools
 		private var _resultObj:Object = {};
 
 		private var _pseudoJSONConverter:PseudoJSONConverter;
+		private var _settiings:ConverterSettings;
 
-		public function GliffyParser()
+		public function GliffyParser(settings:ConverterSettings)
 		{
+			_settiings = settings;
 			_pseudoJSONConverter = new PseudoJSONConverter();
 		}
 
@@ -97,13 +93,13 @@ package tools
 				var i:int = 5;
 				var parent:Object = textObj;
 				do {
-					parent = parent[BACK_LINK_NAME];
+					parent = parent[_settiings.backLinkName];
 					i--;
 				} while (!isMeaningful(parent) && i > 0);
 
-				if (objectHasPropWithAnyValue(parent, 'uid', SCENARIO_POINT_UIDS)) {
+				if (objectHasPropWithAnyValue(parent, 'uid', _settiings.scenarioPointUids)) {
 					createDialogPoint(parent, textObj);
-				} else if (objectHasPropWithAnyValue(parent, 'uid', SCENARIO_WAYPOINT_UIDS)) {
+				} else if (objectHasPropWithAnyValue(parent, 'uid', _settiings.scenarioWayPointsUids)) {
 					createDialogWaypoint(parent, textObj);
 				}
 			}
@@ -113,8 +109,8 @@ package tools
 		{
 			var data:Object = {};
 			var text:String = textObj['Text']['html'];
-			var dataStartIndex:int = text.indexOf(CLIENT_DATA_OPENING_SYMBOL);
-			var dataEndIndex:int = text.lastIndexOf(CLIENT_DATA_CLOSING_SYMBOL);
+			var dataStartIndex:int = text.indexOf(_settiings.clientDataOpeningSymbol);
+			var dataEndIndex:int = text.lastIndexOf(_settiings.clientDataClosingSymbol);
 			if (dataStartIndex > -1 || dataEndIndex > -1) {
 				assert(dataStartIndex > 0, 'Warning! Closing curly bracket without opening one!');
 				assert(dataEndIndex > 0, 'Warning! Opening curly bracket without closing one!');
@@ -127,7 +123,7 @@ package tools
 			}
 
 			var scenarioWaypoint:Object = {};
-			scenarioWaypoint['text'] = textObj[BACK_LINK_NAME]['id'];
+			scenarioWaypoint['text'] = textObj[_settiings.backLinkName]['id'];
 
 			for each (var clientDataObj:Object in data) {
 				var invalidProp:String = findInvalidProperties(clientDataObj);
@@ -146,8 +142,8 @@ package tools
 		{
 			var data:Object = {};
 			var text:String = textObj['Text']['html'];
-			var dataStartIndex:int = text.indexOf(CLIENT_DATA_OPENING_SYMBOL);
-			var dataEndIndex:int = text.lastIndexOf(CLIENT_DATA_CLOSING_SYMBOL);
+			var dataStartIndex:int = text.indexOf(_settiings.clientDataOpeningSymbol);
+			var dataEndIndex:int = text.lastIndexOf(_settiings.clientDataClosingSymbol);
 			if (dataStartIndex > -1 || dataEndIndex > -1) {
 				assert(dataStartIndex > 0, 'Warning! Closing curly bracket without opening one!');
 				assert(dataEndIndex > 0, 'Warning! Opening curly bracket without closing one!');
@@ -161,7 +157,7 @@ package tools
 
 			var scenarioPoint:Object = {};
 			scenarioPoint['guid'] = dialogPointSource['id'];
-			scenarioPoint['text'] = textObj[BACK_LINK_NAME]['id'];
+			scenarioPoint['text'] = textObj[_settiings.backLinkName]['id'];
 			scenarioPoint['points'] = [];
 
 			for each (var clientDataObj:Object in data) {
@@ -184,8 +180,8 @@ package tools
 		{
 			if (!testObject) return false;
 
-			var meanSmth:Boolean = objectHasPropWithAnyValue(testObject, 'uid', SCENARIO_POINT_UIDS);
-			meanSmth ||= objectHasPropWithAnyValue(testObject, 'uid', SCENARIO_WAYPOINT_UIDS);
+			var meanSmth:Boolean = objectHasPropWithAnyValue(testObject, 'uid', _settiings.scenarioPointUids);
+			meanSmth ||= objectHasPropWithAnyValue(testObject, 'uid', _settiings.scenarioWayPointsUids);
 
 			return meanSmth;
 		}
@@ -196,8 +192,8 @@ package tools
 			for (var id:String in _textObjects) {
 
 				var text:String = stripHtml(_textObjects[id]['Text']['html']);
-				var dataStartIndex:int = text.indexOf(CLIENT_DATA_OPENING_SYMBOL);
-				var dataEndIndex:int = text.lastIndexOf(CLIENT_DATA_CLOSING_SYMBOL);
+				var dataStartIndex:int = text.indexOf(_settiings.clientDataOpeningSymbol);
+				var dataEndIndex:int = text.lastIndexOf(_settiings.clientDataClosingSymbol);
 				if (dataStartIndex > -1 || dataEndIndex > -1) {
 					assert(dataStartIndex > 0, 'Warning! Closing curly bracket without opening one!');
 					assert(dataEndIndex > 0, 'Warning! Opening curly bracket without closing one!');
@@ -215,7 +211,7 @@ package tools
 		{
 			for (var propName:String in sourceObject) {
 				// To avoid infinite loop
-				if (propName == BACK_LINK_NAME) continue;
+				if (propName == _settiings.backLinkName) continue;
 
 				var propValue:Object = sourceObject[propName];
 
@@ -267,14 +263,14 @@ package tools
 		private function includeBackLink(propValue:Object, hostObject:Object):void
 		{
 			if (typeof propValue == 'object') {
-				propValue[BACK_LINK_NAME] = hostObject;
+				propValue[_settiings.backLinkName] = hostObject;
 			}
 		}
 
 		private function pickTextObjects(obj:Object):void
 		{
 			if (objectHasProp(obj, 'type', 'Text')) {
-				var parentId:String = obj[BACK_LINK_NAME]['id'];
+				var parentId:String = obj[_settiings.backLinkName]['id'];
 				checkIdCollision(parentId, _textObjects);
 
 				_textObjects[parentId] = obj;
@@ -332,7 +328,7 @@ package tools
 		{
 			var invalidProperty:String = null;
 			for (var propName:String in objToValidate) {
-				var propIsValid:Boolean = VALID_CLIENT_DATA_PROPS.indexOf(propName) > -1;
+				var propIsValid:Boolean = _settiings.validClientDataProperties.indexOf(propName) > -1;
 				if (!propIsValid) {
 					invalidProperty = propName;
 					break;

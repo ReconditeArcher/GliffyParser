@@ -1,8 +1,11 @@
 package
 {
+	import data.ConverterSettings;
+
 	import flash.display.Sprite;
 	import flash.events.Event;
 
+	import net.reconditeden.JsonFile;
 	import net.reconditeden.SmartStage;
 	import net.reconditeden.UI.Button;
 	import net.reconditeden.utils.FileWorks;
@@ -22,6 +25,7 @@ package
 		private var _mergeButton:Button;
 		//
 		private var _initiated:Boolean;
+		private var _parser:GliffyParser;
 		// ----------------------------------------------------------------------------
 		// Public methods
 		// ----------------------------------------------------------------------------
@@ -37,23 +41,36 @@ package
 		private function init(event:Event = null):void
 		{
 			removeEventListener(Event.ADDED_TO_STAGE, init);
-			
+			loadNecessary();
+		}
+
+		private function loadNecessary():void
+		{
+			var settings:ConverterSettings = new ConverterSettings('SampleSettings.json');
+			settings.addEventListener(JsonFile.READY, onNecessaryLoaded);
+		}
+
+		private function onNecessaryLoaded(e:Event):void
+		{
+			var settings:ConverterSettings = ConverterSettings(e.target);
+			_parser = new GliffyParser(settings);
+
 			var smartStage:SmartStage = new SmartStage();
 			smartStage.init(stage);
 			SmartStage.stage.addEventListener(Event.RESIZE, onResize);
-			
+
 			_convertBtn = new Button('Сконвертировать', 0x80FF00, 0x000000, onConvertButton);
 			addChild(_convertBtn);
-			
+
 			_saveButton = new Button('Сохранить', 0xFF4621, 0x000000, onSaveButton);
 			_saveButton.visible = false;
 			addChild(_saveButton);
 
 			_mergeButton = new Button('Склеить', 0xFFFB00, 0x000000, onMergeButton);
 			addChild(_mergeButton);
-			
+
 			_initiated = true;
-			
+
 			onResize();
 		}
 
@@ -73,8 +90,7 @@ package
 						var fileWorks:FileWorks = FileWorks(event.target);
 						var gliffyJson:String = fileWorks.data.readUTFBytes(fileWorks.data.length);
 
-						var parser:GliffyParser = new GliffyParser();
-						_conversionResult = parser.convert(gliffyJson);
+						_conversionResult = _parser.convert(gliffyJson);
 
 						_saveButton.visible = true;
 						onResize();

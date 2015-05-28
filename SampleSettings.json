@@ -1,0 +1,20 @@
+{
+  "validClientDataProperties": [
+    "place",
+    "bgUrl",
+    "skipInAnswers",
+    "npcName",
+    "menuItem",
+    "unique"
+  ],
+  "backLinkName": "__parent__",
+  "scenarioPointUids": [
+    "com.gliffy.shape.basic.basic_v1.default.square",
+    "com.gliffy.shape.basic.basic_v1.default.rectangle"
+  ],
+  "scenarioWayPointsUids": [
+    "com.gliffy.shape.basic.basic_v1.default.circle"
+  ],
+  "clientDataOpeningSymbol": "{",
+  "clientDataClosingSymbol": "}"
+}
