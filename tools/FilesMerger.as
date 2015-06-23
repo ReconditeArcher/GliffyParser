@@ -68,19 +68,30 @@ package tools
 			var resultObject:Object = {};
 
 			resultObject['texts'] = mergeTexts(_parsedFilesByName);
-			RawObjectsWorks.deserialize(resultObject, mergeDialogsAndMainMenu(_parsedFilesByName), true);
+			RawObjectsWorks.deserialize(resultObject, mergeDialogsAndMainMenu(_parsedFilesByName, resultObject['texts']), true);
 
 			saveMergedOnDisk(resultObject);
 		}
 
-		private function mergeTexts(scenarios:Object):Object
+		public function mergeTexts(scenarios:Object):Object
 		{
+//			var linksHistory:Dictionary = new Dictionary();
+
 			var resultTextsCollection:Object = {};
 			var textsCounter:int = 1;
 			for each(var scenarioObject:Object in scenarios) {
 				var textsObj:Object = scenarioObject['texts'];
 				var textIds:Array = RawObjectsWorks.getKeys(textsObj);
 				var count:int = textIds.length;
+
+//				RawObjectsWorks.forEach(
+//					function (obj:Object, propName:String, propValue:Object):void {
+//						if (propName == 'text' && !linksHistory[obj]) {
+//							linksHistory[obj] = { text: textsObj[propValue], textId: propValue };
+//						}
+//					},
+//				scenarioObject['dialog'], true);
+
 
 				for (var i:int = 0; i < count; i++) {
 					var newId:String = String(textsCounter);
@@ -90,6 +101,15 @@ package tools
 						ArrayUtil.removeValueFromArray(textIds, newId)
 					} else {
 						var textId:String = textIds.pop();
+						RawObjectsWorks.forEach(
+								function (obj:Object, propName:String, propValue:Object):void
+								{
+									if ((propName == 'text') && propValue == newId) {
+										obj[propName] = 'old' + newId;
+									}
+								},
+								scenarioObject['dialog'], true);
+
 						RawObjectsWorks.forEach(
 								function (obj:Object, propName:String, propValue:Object):void
 								{
@@ -107,34 +127,58 @@ package tools
 				assert(textIds.length == 0, "Something goes wrong");
 			}
 
+//			for each(var scenarioObject:Object in scenarios) {
+//				RawObjectsWorks.forEach(
+//					function (obj:Object, propName:String, propValue:Object):void {
+//						if (propName == 'text' && linksHistory[obj]) {
+//							assert(linksHistory[obj]['text'] == resultTextsCollection[propValue], 'Shit happens');
+//						}
+//					},
+//				scenarioObject['dialog'], true);
+//			}
+
 			return resultTextsCollection;
 		}
 
-		private function mergeDialogsAndMainMenu(scenarios:Object):Object
+		private function mergeDialogsAndMainMenu(scenarios:Object, textsObj:Object):Object
 		{
+//			var linksHistory:Dictionary = new Dictionary();
+
 			var resultDialog:Array = [];
 			var resultMainMenu:Array = [];
-			var nextGuid:int = 1;
+			var nextGUID:int = 1;
 
 			for each(var scenarioObject:Object in scenarios) {
 				var dialogArray:Array = scenarioObject['dialog'];
-				var count:int = dialogArray.length;
 
-				while (count--) {
-					var newId:String = String(nextGuid);
-					var currentDialogPoint:Object = dialogArray[count];
+				// { Test code
+//				RawObjectsWorks.forEach(
+//					function (obj:Object, propName:String, propValue:Object):void {
+//						if (propName == 'to') {
+//							assert(!linksHistory[obj], 'Same object detected twice');
+//							var pointingPoint:Object = findObjectWithGUID(dialogArray, int(propValue));
+//
+//							trace('to: ' + propValue + ' WayPoint with text: ' + textsObj[obj['text']] + ' points to point with text: ' + textsObj[pointingPoint['text']]);
+//							linksHistory[obj] = textsObj[pointingPoint['text']];
+//						}
+//					},
+//				dialogArray, true);
+				// } End Test code
+
+				RawObjectsWorks.forEach(
+						function (obj:Object, propName:String, propValue:Object):void
+						{
+							if ((propName == 'to' || propName == 'guid')) {
+								obj[propName] = 'old' + propValue;
+							}
+						},
+						scenarioObject, true);
+
+				for each (var currentDialogPoint:Object in dialogArray) {
+					var newId:String = String(nextGUID);
 					var oldId:String = currentDialogPoint['guid'];
 
 					resultDialog.push(currentDialogPoint);
-
-					RawObjectsWorks.forEach(
-							function (obj:Object, propName:String, propValue:Object):void
-							{
-								if ((propName == 'to' || propName == 'guid') && propValue == newId) {
-									obj[propName] = 'old' + newId;
-								}
-							},
-							dialogArray, true);
 
 					RawObjectsWorks.forEach(
 							function (obj:Object, propName:String, propValue:Object):void
@@ -143,24 +187,36 @@ package tools
 									obj[propName] = int(newId);
 								}
 							},
-							dialogArray, true);
+							scenarioObject, true);
 
-					RawObjectsWorks.forEach(
-							function (obj:Object, propName:String, propValue:Object):void
-							{
-								if (propName == 'guid' && propValue == oldId) {
-									obj[propName] = int(newId);
-								}
-							},
-							scenarioObject['mainMenu'], true);
-
-					nextGuid++;
+					nextGUID++;
 				}
 
 				resultMainMenu = resultMainMenu.concat(scenarioObject['mainMenu']);
 			}
 
+			// { Test code
+//			RawObjectsWorks.forEach(
+//				function (obj:Object, propName:String, propValue:Object):void {
+//					if (propName == 'to' && linksHistory[obj]) {
+//						var pointingPoint:Object = findObjectWithGUID(resultDialog, int(propValue));
+//
+//						trace('Everything is fine: ' + (linksHistory[obj] == textsObj[pointingPoint['text']]));
+//						if (linksHistory[obj] != textsObj[pointingPoint['text']]) {
+//							trace('to: ' + propValue + ' WayPoint with text: ' + textsObj[obj['text']] + ' points on point with text: ' + textsObj[pointingPoint['text']]);
+//							trace('But it used to point on: ' + textsObj[linksHistory[obj]['text']]);
+//						}
+//					}
+//				},
+//			resultDialog, true);
+			// } End Test code
+
 			return {dialog: resultDialog, mainMenu: resultMainMenu};
+		}
+
+		private function findObjectWithGUID(objects:Array, guid:int):Object
+		{
+			return objects.filter(function (point:Object, ...rest):Boolean { return point['guid'] == guid; })[0];
 		}
 
 		private function saveMergedOnDisk(mergedDialogs:Object):void

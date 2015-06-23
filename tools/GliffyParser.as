@@ -107,20 +107,10 @@ package tools
 
 		private function createDialogWaypoint(dialogWaypointSource:Object, textObj:Object):void
 		{
-			var data:Object = {};
-			var text:String = textObj['Text']['html'];
-			var dataStartIndex:int = text.indexOf(_settings.clientDataOpeningSymbol);
-			var dataEndIndex:int = text.lastIndexOf(_settings.clientDataClosingSymbol);
-			if (dataStartIndex > -1 || dataEndIndex > -1) {
-				assert(dataStartIndex > 0, 'Warning! Closing curly bracket without opening one!');
-				assert(dataEndIndex > 0, 'Warning! Opening curly bracket without closing one!');
+			var extrusionResult:Object = extractClientData(textObj['Text']['html']);
 
-				var clientDataString:String = text.substring(dataStartIndex, dataEndIndex + 1);
-				clientDataString = stripHtml(clientDataString);
-
-				data = _pseudoJSONConverter.parseStringToObjects(clientDataString);
-				text = text.substring(0, dataStartIndex);
-			}
+			var data:Object = extrusionResult['data'];
+			var text:String = extrusionResult['text'];
 
 			var scenarioWaypoint:Object = {};
 			scenarioWaypoint['text'] = textObj[_settings.backLinkName]['id'];
@@ -128,32 +118,22 @@ package tools
 			for each (var clientDataObj:Object in data) {
 				var invalidProp:String = findInvalidProperties(clientDataObj);
 				if (invalidProp) {
-					assert(false, sprintf('Waypoint with text "%s" has inappropriate field "%s" in clientData', scenarioWaypoint['text'], invalidProp));
+					assert(false, sprintf('Waypoint with text "%s" has inappropriate field "%s" in clientData', text, invalidProp));
 				}
 				RawObjectsWorks.deserialize(scenarioWaypoint, clientDataObj, true);
 			}
 
-			assert(scenarioWaypoint['place'], sprintf('Point with text %s has no place', scenarioWaypoint['text']));
+			assert(scenarioWaypoint['place'], sprintf('Point with text %s has no place', text));
 
 			_wayPointObjects[dialogWaypointSource['id']] = scenarioWaypoint;
 		}
 
 		private function createDialogPoint(dialogPointSource:Object, textObj:Object):void
 		{
-			var data:Object = {};
-			var text:String = textObj['Text']['html'];
-			var dataStartIndex:int = text.indexOf(_settings.clientDataOpeningSymbol);
-			var dataEndIndex:int = text.lastIndexOf(_settings.clientDataClosingSymbol);
-			if (dataStartIndex > -1 || dataEndIndex > -1) {
-				assert(dataStartIndex > 0, 'Warning! Closing curly bracket without opening one!');
-				assert(dataEndIndex > 0, 'Warning! Opening curly bracket without closing one!');
+			var extrusionResult:Object = extractClientData(textObj['Text']['html']);
 
-				var clientDataString:String = text.substring(dataStartIndex, dataEndIndex + 1);
-				clientDataString = stripHtml(clientDataString);
-
-				data = _pseudoJSONConverter.parseStringToObjects(clientDataString);
-				text = text.substring(0, dataStartIndex);
-			}
+			var data:Object = extrusionResult['data'];
+			var text:String = extrusionResult['text'];
 
 			var scenarioPoint:Object = {};
 			scenarioPoint['guid'] = dialogPointSource['id'];
@@ -163,17 +143,37 @@ package tools
 			for each (var clientDataObj:Object in data) {
 				var invalidProp:String = findInvalidProperties(clientDataObj);
 				if (invalidProp) {
-					assert(false, sprintf('Point with text "%s" has inappropriate field "%s" in clientData', scenarioPoint['text'], invalidProp));
+					assert(false, sprintf('Point with text "%s" has inappropriate field "%s" in clientData', text, invalidProp));
 				}
 				RawObjectsWorks.deserialize(scenarioPoint, clientDataObj, true);
 			}
-
 
 			if (scenarioPoint['menuItem']) scenarioPoint['menuItem'] = stripHtml(scenarioPoint['menuItem']);
 			if (scenarioPoint['npcName']) scenarioPoint['npcName'] = stripHtml(scenarioPoint['npcName']);
 
 			(_resultObj['dialog'] as Array).push(scenarioPoint);
 			_pointObjects[scenarioPoint['guid']] = scenarioPoint;
+		}
+
+		private function extractClientData(textWithClientData:String):Object
+		{
+			var data:Object = null;
+			var text:String = textWithClientData || '';
+
+			var dataStartIndex:int = textWithClientData.indexOf(_settings.clientDataOpeningSymbol);
+			var dataEndIndex:int = textWithClientData.lastIndexOf(_settings.clientDataClosingSymbol);
+			if (dataStartIndex > -1 || dataEndIndex > -1) {
+				assert(dataStartIndex > 0, 'Warning! Closing curly bracket without opening one!');
+				assert(dataEndIndex > 0, 'Warning! Opening curly bracket without closing one!');
+
+				var clientDataString:String = textWithClientData.substring(dataStartIndex, dataEndIndex + 1);
+				clientDataString = stripHtml(clientDataString);
+
+				data = _pseudoJSONConverter.parseStringToObjects(clientDataString);
+				text = textWithClientData.substring(0, dataStartIndex);
+			}
+
+			return {text: text, data: data};
 		}
 
 		private function isMeaningful(testObject:Object):Boolean
@@ -347,6 +347,7 @@ package tools
 			for (var textId:String in texts) {
 				// Preparing text
 				var text:String = StringUtils.trim(texts[textId]);
+				texts[textId] = text;
 
 				// Lazy creating counter object. We need count to know if text was already presented in array.
 				// And we need textId to change all references from redundant text to first one.
@@ -356,21 +357,23 @@ package tools
 					countsByText[text] = textCountObject;
 				}
 
-				countsByText[text]['cnt']++;
+				textCountObject['cnt']++;
 
-				if (countsByText[text]['cnt'] > 1) {
+				if (textCountObject['cnt'] > 1) {
 					RawObjectsWorks.forEach(
 							function (obj:Object, propName:String, propValue:Object):void
 							{
 								if (propName == 'text' && propValue == textId) {
 									obj[propName] = countsByText[text]['textId'];
 								}
-							}, scenarioObject['dialog'], true);
+							},
+							scenarioObject['dialog'], true);
+
 					textIdsToRemove.push(textId);
 				}
 			}
 
-			for each(var removeTextId:int in textIdsToRemove) {
+			for each(var removeTextId:String in textIdsToRemove) {
 				delete texts[removeTextId];
 			}
 		}
